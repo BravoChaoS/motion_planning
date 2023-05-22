@@ -108,13 +108,20 @@ def rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy):
         # If it is collision free, find closest point in existing tree. 
         closest_node = closestNode(rrt, xy)
         prev_grid = meters2grid(closest_node.p)
-        pf_delt = np.array([gx[prev_grid[0]][prev_grid[1]], gy[prev_grid[0]][prev_grid[1]]])
+        # if prev_grid[0] < 0 or prev_grid[1] < 0 or prev_grid[0] >= gx.shape[0] or prev_grid[1] >= gx.shape[1]:
+        #     print('Error: closest node out of bounds at ' + str(prev_grid) + str(closest_node.p))
+        pf_delt = d * params.apf_coef * np.array([gx[prev_grid[0]][prev_grid[1]], gy[prev_grid[0]][prev_grid[1]]])
 
         # Extend tree towards xy from closest_vert. Use the extension parameter
         # d defined above as your step size. In other words, the Euclidean
         # distance between new_vert and closest_vert should be d.
         new_node = Node()
-        new_node.p = closest_node.p + d * (xy - closest_node.p) + d * params.apf_coef * pf_delt
+        new_node.p = closest_node.p + d * (xy - closest_node.p) + pf_delt
+        # if out of range
+        if rnd < params.goal_prob or new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[1] or new_node.p[1] < \
+                params.world_bounds_y[0] or new_node.p[1] > params.world_bounds_y[1]:
+            new_node.p -= pf_delt
+
         new_node.i = len(rrt)
         new_node.iPrev = closest_node.i
 

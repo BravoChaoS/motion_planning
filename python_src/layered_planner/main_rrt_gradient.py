@@ -58,8 +58,8 @@ class Robot:
 
 # Initialization
 params = Params()
-xy_start = np.array([1.4, 0.9])
-xy_goal = np.array([1.5, -1.4])
+xy_start = np.array([1.4, 1.4])
+xy_goal = np.array([1.5, -0.9])
 # xy_goal = np.array([1.4, 1.2])
 
 
@@ -77,14 +77,14 @@ xy_goal = np.array([1.5, -1.4])
 #               np.array([[-2.5, 2.49], [2.5, 2.49], [2.5, 2.5], [-2.5, 2.5]]),
 #               np.array([[-2.5, -2.49], [-2.49, -2.49], [-2.49, 2.49], [-2.5, 2.49]]),
 #               np.array([[2.49, -2.49], [2.5, -2.49], [2.5, 2.49], [2.49, 2.49]]),
-
+#
 #               np.array([[-1.0, 2.0], [0.5, 2.0], [0.5, 2.5], [-1.0, 2.5]]), # my table
 #               np.array([[-1.0, 2.0], [0.5, 2.0], [0.5, 2.5], [-1.0, 2.5]]) + np.array([2.0, 0]), # Evgeny's table
 #               np.array([[-2.0, -0.5], [-2.0, 1.0], [-2.5, 1.0], [-2.5, -0.5]]), # Roman's table
 #               np.array([[-1.2, -1.2], [-1.2, -2.5], [-2.5, -2.5], [-2.5, -1.2]]), # mats
 #               np.array([[2.0, 0.8], [2.0, -0.8], [2.5, -0.8], [2.5, 0.8]]), # Mocap table
-
-
+#
+#
 #               # moving obstacle
 #               np.array([[-2.3, 2.0], [-2.2, 2.0], [-2.2, 2.1], [-2.3, 2.1]]),
 #               np.array([[2.3, -2.3], [2.4, -2.3], [2.4, -2.2], [2.3, -2.2]]),
@@ -92,14 +92,20 @@ xy_goal = np.array([1.5, -1.4])
 #             ]
 
 passage_width = 0.25
-passage_location = 0.0
+passage_location = 0.5
+barrier_right = 0.8
+barrier_left = -0.8
 obstacles = [
     # narrow passage
     np.array(
         [[-2.5, -0.5], [-passage_location - passage_width / 2., -0.5], [-passage_location - passage_width / 2., 0.5],
          [-2.5, 0.5]]),
-    np.array([[-passage_location + passage_width / 2., -0.5], [2.5, -0.5], [2.5, 0.5],
-              [-passage_location + passage_width / 2., 0.5]]),
+    np.array([[-passage_location + passage_width / 2., -0.5], [2.5, -0.5],
+              [2.5, 0.5], [-passage_location + passage_width / 2., 0.5]]),
+    np.array([[-passage_location + passage_width + barrier_left, -1.5 - passage_width], [-passage_location + passage_width + barrier_right, -1.5 - passage_width],
+              [-passage_location + passage_width + barrier_right, -1.5], [-passage_location + passage_width + barrier_left, -1.5]]),
+    np.array([[-passage_location + barrier_right, -1.5], [-passage_location + passage_width + barrier_right, -1.5],
+              [-passage_location + passage_width + barrier_right, -0.5], [-passage_location + barrier_right, -0.5]]),
 ]
 
 robots = []
@@ -132,7 +138,7 @@ if __name__ == '__main__':
     # plt.pause(1.0)
     P = ShortenPath(P_long, obstacles, smoothiters=30)  # P = [[xN, yN], ..., [x1, y1], [x0, y0]]
 
-    traj_global = waypts2setpts(P, params);
+    traj_global = waypts2setpts(P, params)
     P = np.vstack([P, xy_start])
     plt.plot(P[:, 0], P[:, 1], linewidth=3, color='orange', label='Global planner path')
     plt.pause(0.1)

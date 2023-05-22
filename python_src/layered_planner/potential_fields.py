@@ -11,14 +11,20 @@ from scipy.ndimage.morphology import distance_transform_edt as bwdist
 
 def grid_map(obstacles, nrows=500, ncols=500):
     """ Obstacles discretized map """
-    grid = np.zeros((nrows, ncols));
+    grid = np.zeros((nrows, ncols))
     # rectangular obstacles
     for obstacle in obstacles:
-        x1 = meters2grid(obstacle[0][1]);
+        x1 = meters2grid(obstacle[0][1])
         x2 = meters2grid(obstacle[2][1])
-        y1 = meters2grid(obstacle[0][0]);
+        y1 = meters2grid(obstacle[0][0])
         y2 = meters2grid(obstacle[2][0])
         grid[x1:x2, y1:y2] = 1
+    # 将grid的四个边界设置为障碍物
+    grid[0, :] = 1
+    grid[-1, :] = 1
+    grid[:, 0] = 1
+    grid[:, -1] = 1
+
     return grid
 
 
@@ -44,7 +50,7 @@ def grid2meters(pose_grid, nrows=500, ncols=500):
     return pose_meters
 
 
-def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=500,
+def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=300,
                        nrows=500, ncols=500):
     """ Repulsive potential """
     goal = meters2grid(goal)
