@@ -90,7 +90,7 @@ xy_goal = np.array([1.5, -0.9])
 #               np.array([[2.3, -2.3], [2.4, -2.3], [2.4, -2.2], [2.3, -2.2]]),
 #               np.array([[0.0, -2.3], [0.1, -2.3], [0.1, -2.2], [0.0, -2.2]]),
 #             ]
-
+mode = 0
 passage_width = 0.25
 passage_location = 0.5
 barrier_right = 0.8
@@ -120,6 +120,7 @@ max_dists_array = []
 
 # Layered Motion Planning: RRT (global) + Potential Field (local)
 if __name__ == '__main__':
+    mode = 1
     # RRT-global planning
     plt.figure(figsize=(10, 10))
     draw_map(obstacles)
@@ -127,12 +128,20 @@ if __name__ == '__main__':
     plt.plot(xy_goal[0], xy_goal[1], 'bo', color='green', markersize=20, label='goal')
 
     obstacles_grid = grid_map(obstacles)
-    f = combined_potential(obstacles_grid, xy_goal, params.influence_radius)
-    [gy, gx] = np.gradient(-f)
-    draw_gradient(f)
 
-    P_long = rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy)
-    # P_long = rrt_path(obstacles, xy_start, xy_goal, params)
+    if mode == 0:
+        P_long = rrt_path(obstacles, xy_start, xy_goal, params)
+    elif mode == 1:
+        f = combined_potential(obstacles_grid, xy_goal, params.influence_radius)
+        [gy, gx] = np.gradient(-f)
+        draw_gradient(f)
+        P_long = rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy)
+    elif mode == 2:
+        att, rep = devided_potential(obstacles_grid, xy_goal, params.influence_radius)
+        [gy, gx] = np.gradient(-att - rep)
+        draw_gradient(att)
+        draw_gradient(rep)
+        P_long = rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy)
 
     # plt.plot(P_long[:,0], P_long[:,1], linewidth=3, color='green', label='Global planner path')
     # plt.pause(1.0)

@@ -20,10 +20,10 @@ def grid_map(obstacles, nrows=500, ncols=500):
         y2 = meters2grid(obstacle[2][0])
         grid[x1:x2, y1:y2] = 1
     # 将grid的四个边界设置为障碍物
-    grid[0, :] = 1
-    grid[-1, :] = 1
-    grid[:, 0] = 1
-    grid[:, -1] = 1
+    # grid[0, :] = 1
+    # grid[-1, :] = 1
+    # grid[:, 0] = 1
+    # grid[:, -1] = 1
 
     return grid
 
@@ -50,8 +50,8 @@ def grid2meters(pose_grid, nrows=500, ncols=500):
     return pose_meters
 
 
-def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=300,
-                       nrows=500, ncols=500):
+def devided_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=300,
+                      nrows=500, ncols=500):
     """ Repulsive potential """
     goal = meters2grid(goal)
     d = bwdist(obstacles_grid == 0)
@@ -63,8 +63,14 @@ def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef
     [x, y] = np.meshgrid(np.arange(ncols), np.arange(nrows))
     attractive = attractive_coef * ((x - goal[0]) ** 2 + (y - goal[1]) ** 2)
     """ Combine terms """
-    f = attractive + repulsive
-    return f
+    return attractive, repulsive
+
+
+def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=300,
+                       nrows=500, ncols=500):
+    attractive, repulsive = devided_potential(obstacles_grid, goal, influence_radius, attractive_coef, repulsive_coef,
+                                              nrows, ncols)
+    return attractive + repulsive
 
 
 # def gradient_planner (f, start, goal, maxiters=200):
