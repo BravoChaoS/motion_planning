@@ -7,6 +7,7 @@ from math import *
 from random import random
 from scipy.spatial import ConvexHull
 from matplotlib import path
+from potential_fields import *
 import time
 
 
@@ -66,7 +67,7 @@ def closestNode(rrt, p):
     return closest_node
 
 
-def rrt_path(obstacles, xy_start, xy_goal, params):
+def rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy):
     # Initialize RRT. The RRT will be represented as a list of nodes.
     # So each column represents a vertex of the tree.
     rrt = []
@@ -106,12 +107,14 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
 
         # If it is collision free, find closest point in existing tree. 
         closest_node = closestNode(rrt, xy)
+        prev_grid = meters2grid(closest_node.p)
+        pf_delt = np.array([gx[prev_grid[0]][prev_grid[1]], gy[prev_grid[0]][prev_grid[1]]])
 
         # Extend tree towards xy from closest_vert. Use the extension parameter
         # d defined above as your step size. In other words, the Euclidean
         # distance between new_vert and closest_vert should be d.
         new_node = Node()
-        new_node.p = closest_node.p + d * (xy - closest_node.p)
+        new_node.p = closest_node.p + d * (xy - closest_node.p) + d * params.apf_coef * pf_delt
         new_node.i = len(rrt)
         new_node.iPrev = closest_node.i
 

@@ -14,43 +14,48 @@ def grid_map(obstacles, nrows=500, ncols=500):
     grid = np.zeros((nrows, ncols));
     # rectangular obstacles
     for obstacle in obstacles:
-        x1 = meters2grid(obstacle[0][1]); x2 = meters2grid(obstacle[2][1])
-        y1 = meters2grid(obstacle[0][0]); y2 = meters2grid(obstacle[2][0])
+        x1 = meters2grid(obstacle[0][1]);
+        x2 = meters2grid(obstacle[2][1])
+        y1 = meters2grid(obstacle[0][0]);
+        y2 = meters2grid(obstacle[2][0])
         grid[x1:x2, y1:y2] = 1
     return grid
+
 
 def meters2grid(pose_m, nrows=500, ncols=500):
     # [0, 0](m) -> [250, 250]
     # [1, 0](m) -> [250+100, 250]
     # [0,-1](m) -> [250, 250-100]
     if np.isscalar(pose_m):
-        pose_on_grid = int( pose_m*100 + ncols/2 )
+        pose_on_grid = int(pose_m * 100 + ncols / 2)
     else:
-        pose_on_grid = np.array( np.array(pose_m)*100 + np.array([ncols/2, nrows/2]), dtype=int )
+        pose_on_grid = np.array(np.array(pose_m) * 100 + np.array([ncols / 2, nrows / 2]), dtype=int)
     return pose_on_grid
+
+
 def grid2meters(pose_grid, nrows=500, ncols=500):
     # [250, 250] -> [0, 0](m)
     # [250+100, 250] -> [1, 0](m)
     # [250, 250-100] -> [0,-1](m)
     if np.isscalar(pose_grid):
-        pose_meters = (pose_grid - ncols/2) / 100.0
+        pose_meters = (pose_grid - ncols / 2) / 100.0
     else:
-        pose_meters = ( np.array(pose_grid) - np.array([ncols/2, nrows/2]) ) / 100.0
+        pose_meters = (np.array(pose_grid) - np.array([ncols / 2, nrows / 2])) / 100.0
     return pose_meters
 
-def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1./700, repulsive_coef=200, nrows=500, ncols=500):
+
+def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=500,
+                       nrows=500, ncols=500):
     """ Repulsive potential """
     goal = meters2grid(goal)
-    d = bwdist(obstacles_grid==0)
-    d2 = (d/100.) + 1 # Rescale and transform distances
+    d = bwdist(obstacles_grid == 0)
+    d2 = (d / 100.) + 1  # Rescale and transform distances
     d0 = influence_radius
-    nu = repulsive_coef
-    repulsive = nu*((1./d2 - 1./d0)**2)
-    repulsive [d2 > d0] = 0
+    repulsive = repulsive_coef * ((1. / d2 - 1. / d0) ** 2)
+    repulsive[d2 > d0] = 0
     """ Attractive potential """
     [x, y] = np.meshgrid(np.arange(ncols), np.arange(nrows))
-    xi = attractive_coef
-    attractive = xi * ( (x - goal[0])**2 + (y - goal[1])**2 )
+    attractive = attractive_coef * ((x - goal[0]) ** 2 + (y - goal[1]) ** 2)
     """ Combine terms """
     f = attractive + repulsive
     return f
@@ -103,12 +108,12 @@ def gradient_planner_next(current_point, f, params):
     It also computes mean velocity, V, of the gradient map in current point.
     """
     [gy, gx] = np.gradient(-f)
-    iy, ix = np.array( meters2grid(current_point), dtype=int )
-    w = 20 # smoothing window size for gradient-velocity
-    vx = np.mean(gx[ix-int(w/2) : ix+int(w/2), iy-int(w/2) : iy+int(w/2)])
-    vy = np.mean(gy[ix-int(w/2) : ix+int(w/2), iy-int(w/2) : iy+int(w/2)])
+    iy, ix = np.array(meters2grid(current_point), dtype=int)
+    w = 20  # smoothing window size for gradient-velocity
+    vx = np.mean(gx[ix - int(w / 2): ix + int(w / 2), iy - int(w / 2): iy + int(w / 2)])
+    vy = np.mean(gy[ix - int(w / 2): ix + int(w / 2), iy - int(w / 2): iy + int(w / 2)])
     dt = 0.01 / np.linalg.norm([vx, vy])
-    V = np.array([vx, vy])*params.drone_vel
-    next_point = current_point + dt*V
+    V = np.array([vx, vy]) * params.drone_vel
+    next_point = current_point + dt * V
 
     return next_point, V
