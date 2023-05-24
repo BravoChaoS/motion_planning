@@ -66,6 +66,13 @@ def closestNode(rrt, p):
     return closest_node
 
 
+def normalize(v):
+    norm = np.linalg.norm(v)
+    if norm == 0:
+        return v
+    return v / norm
+
+
 def rrt_path(obstacles, xy_start, xy_goal, params):
     # Initialize RRT. The RRT will be represented as a list of nodes.
     # So each column represents a vertex of the tree.
@@ -81,6 +88,7 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
 
     # RRT algorithm
     start_time = time.time()
+    end_time = 0
     iters = 0
     print('Configuration space sampling started ...')
     while not nearGoal:  # and iters < maxiters:
@@ -111,7 +119,7 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
         # d defined above as your step size. In other words, the Euclidean
         # distance between new_vert and closest_vert should be d.
         new_node = Node()
-        new_node.p = closest_node.p + d * (xy - closest_node.p)
+        new_node.p = closest_node.p + d * normalize(xy - closest_node.p)
         new_node.i = len(rrt)
         new_node.iPrev = closest_node.i
 
@@ -127,7 +135,7 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
             plt.plot(new_node.p[0], new_node.p[1], 'bo', color='blue', markersize=5)  # VERTICES
             plt.plot([closest_node.p[0], new_node.p[0]], [closest_node.p[1], new_node.p[1]], color='blue')  # EDGES
             plt.draw()
-            plt.pause(0.01)
+            # plt.pause(0.001)
 
         # If it is collision free, add it to tree
         rrt.append(new_node)
@@ -166,7 +174,8 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
     P = np.array(P)
     # plt.plot( P[:,0], P[:,1], color='green', linewidth=5, label='path from RRT' )
 
-    return P
+    print(iters, 'iterations passed')
+    return P, (end_time - start_time), iters
 
 
 def ShortenPath(P, obstacles, smoothiters=10):

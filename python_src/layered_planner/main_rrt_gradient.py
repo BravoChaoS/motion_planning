@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 from tools import *
 from rrt import *
 from rrt_apf import *
+from rrt_apf_sa import *
 from potential_fields import *
 
 
@@ -21,12 +22,13 @@ def move_obstacles(obstacles, params):
 
 class Params:
     def __init__(self):
-        self.animate = 1  # show RRT construction, set 0 to reduce time of the RRT algorithm
-        self.visualize = 1  # show constructed paths at the end of the RRT and path smoothing algorithms
+        self.mode = 2
+        self.animate = 0  # show RRT construction, set 0 to reduce time of the RRT algorithm
+        self.visualize = 0  # show constructed paths at the end of the RRT and path smoothing algorithms
         self.maxiters = 5000  # max number of samples to build the RRT
         self.goal_prob = 0.05  # with probability goal_prob, sample the goal
         self.minDistGoal = 0.25  # [m], min distance os samples from goal to add goal node to the RRT
-        self.extension = 0.4  # [m], extension parameter: this controls how far the RRT extends in each step.
+        self.extension = 0.1  # [m], extension parameter: this controls how far the RRT extends in each step.
         self.world_bounds_x = [-2.5, 2.5]  # [m], map size in X-direction
         self.world_bounds_y = [-2.5, 2.5]  # [m], map size in Y-direction
         self.drone_vel = 4.0  # [m/s]
@@ -37,6 +39,8 @@ class Params:
         self.num_robots = 3
         self.moving_obstacles = 0  # move small cubic obstacles or not
         self.apf_coef = 0.3  # coefficient for APF
+        self.test_loops = 100
+        self.file_path = 'D:\\BCSpace\\Projects\\PythonProjects\\motion_planning\\result\\'
 
 
 class Robot:
@@ -64,54 +68,52 @@ xy_goal = np.array([1.5, -0.9])
 
 
 """ Obstacles map construction """
-# obstacles = [
-#               # bugtrap
-#               np.array([[0.5, 0], [2.5, 0.], [2.5, 0.3], [0.5, 0.3]]),
-#               np.array([[0.5, 0.3], [0.8, 0.3], [0.8, 1.5], [0.5, 1.5]]),
-#               # np.array([[0.5, 1.5], [1.5, 1.5], [1.5, 1.8], [0.5, 1.8]]),
-#               # angle
-#               np.array([[-2, -2], [-0.5, -2], [-0.5, -1.8], [-2, -1.8]]),
-#               np.array([[-0.7, -1.8], [-0.5, -1.8], [-0.5, -0.8], [-0.7, -0.8]]),
-#               # walls
-#               np.array([[-2.5, -2.5], [2.5, -2.5], [2.5, -2.49], [-2.5, -2.49]]),
-#               np.array([[-2.5, 2.49], [2.5, 2.49], [2.5, 2.5], [-2.5, 2.5]]),
-#               np.array([[-2.5, -2.49], [-2.49, -2.49], [-2.49, 2.49], [-2.5, 2.49]]),
-#               np.array([[2.49, -2.49], [2.5, -2.49], [2.5, 2.49], [2.49, 2.49]]),
-#
-#               np.array([[-1.0, 2.0], [0.5, 2.0], [0.5, 2.5], [-1.0, 2.5]]), # my table
-#               np.array([[-1.0, 2.0], [0.5, 2.0], [0.5, 2.5], [-1.0, 2.5]]) + np.array([2.0, 0]), # Evgeny's table
-#               np.array([[-2.0, -0.5], [-2.0, 1.0], [-2.5, 1.0], [-2.5, -0.5]]), # Roman's table
-#               np.array([[-1.2, -1.2], [-1.2, -2.5], [-2.5, -2.5], [-2.5, -1.2]]), # mats
-#               np.array([[2.0, 0.8], [2.0, -0.8], [2.5, -0.8], [2.5, 0.8]]), # Mocap table
-#
-#
-#               # moving obstacle
-#               np.array([[-2.3, 2.0], [-2.2, 2.0], [-2.2, 2.1], [-2.3, 2.1]]),
-#               np.array([[2.3, -2.3], [2.4, -2.3], [2.4, -2.2], [2.3, -2.2]]),
-#               np.array([[0.0, -2.3], [0.1, -2.3], [0.1, -2.2], [0.0, -2.2]]),
-#             ]
-mode = 0
+obstacles = [
+    # bugtrap
+    np.array([[0.5, 0], [2.5, 0.], [2.5, 0.3], [0.5, 0.3]]),
+    np.array([[0.5, 0.3], [0.8, 0.3], [0.8, 1.5], [0.5, 1.5]]),
+    # np.array([[0.5, 1.5], [1.5, 1.5], [1.5, 1.8], [0.5, 1.8]]),
+    # angle
+    np.array([[-2, -2], [-0.5, -2], [-0.5, -1.8], [-2, -1.8]]),
+    np.array([[-0.7, -1.8], [-0.5, -1.8], [-0.5, -0.8], [-0.7, -0.8]]),
+    # walls
+    np.array([[-2.5, -2.5], [2.5, -2.5], [2.5, -2.49], [-2.5, -2.49]]),
+    np.array([[-2.5, 2.49], [2.5, 2.49], [2.5, 2.5], [-2.5, 2.5]]),
+    np.array([[-2.5, -2.49], [-2.49, -2.49], [-2.49, 2.49], [-2.5, 2.49]]),
+    np.array([[2.49, -2.49], [2.5, -2.49], [2.5, 2.49], [2.49, 2.49]]),
+
+    np.array([[-1.0, 2.0], [0.5, 2.0], [0.5, 2.5], [-1.0, 2.5]]),  # my table
+    np.array([[-1.0, 2.0], [0.5, 2.0], [0.5, 2.5], [-1.0, 2.5]]) + np.array([2.0, 0]),  # Evgeny's table
+    np.array([[-2.0, -0.5], [-2.0, 1.0], [-2.5, 1.0], [-2.5, -0.5]]),  # Roman's table
+    np.array([[-1.2, -1.2], [-1.2, -2.5], [-2.5, -2.5], [-2.5, -1.2]]),  # mats
+    np.array([[2.0, 0.8], [2.0, -0.8], [2.5, -0.8], [2.5, 0.8]]),  # Mocap table
+
+    # moving obstacle
+    np.array([[-2.3, 2.0], [-2.2, 2.0], [-2.2, 2.1], [-2.3, 2.1]]),
+    np.array([[2.3, -2.3], [2.4, -2.3], [2.4, -2.2], [2.3, -2.2]]),
+    np.array([[0.0, -2.3], [0.1, -2.3], [0.1, -2.2], [0.0, -2.2]]),
+]
 passage_width = 0.25
 passage_location = 0.5
 barrier_right = 0.8
 barrier_left = -0.8
-obstacles = [
-    # narrow passage
-    np.array(
-        [[-2.5, -0.5], [-passage_location - passage_width / 2., -0.5], [-passage_location - passage_width / 2., 0.5],
-         [-2.5, 0.5]]),
-    np.array([[-passage_location + passage_width / 2., -0.5], [2.5, -0.5],
-              [2.5, 0.5], [-passage_location + passage_width / 2., 0.5]]),
-    np.array([[-passage_location + passage_width + barrier_left, -1.5 - passage_width], [-passage_location + passage_width + barrier_right, -1.5 - passage_width],
-              [-passage_location + passage_width + barrier_right, -1.5], [-passage_location + passage_width + barrier_left, -1.5]]),
-    np.array([[-passage_location + barrier_right, -1.5], [-passage_location + passage_width + barrier_right, -1.5],
-              [-passage_location + passage_width + barrier_right, -0.5], [-passage_location + barrier_right, -0.5]]),
-]
+# obstacles = [
+#     # narrow passage
+#     np.array(
+#         [[-2.5, -0.5], [-passage_location - passage_width / 2., -0.5], [-passage_location - passage_width / 2., 0.5],
+#          [-2.5, 0.5]]),
+#     np.array([[-passage_location + passage_width / 2., -0.5], [2.5, -0.5],
+#               [2.5, 0.5], [-passage_location + passage_width / 2., 0.5]]),
+#     np.array([[-passage_location + passage_width + barrier_left, -1.5 - passage_width], [-passage_location + passage_width + barrier_right, -1.5 - passage_width],
+#               [-passage_location + passage_width + barrier_right, -1.5], [-passage_location + passage_width + barrier_left, -1.5]]),
+#     np.array([[-passage_location + barrier_right, -1.5], [-passage_location + passage_width + barrier_right, -1.5],
+#               [-passage_location + passage_width + barrier_right, -0.5], [-passage_location + barrier_right, -0.5]]),
+# ]
 
 robots = []
 for i in range(params.num_robots):
     robots.append(Robot())
-robot1 = robots[0];
+robot1 = robots[0]
 robot1.leader = True
 
 # postprocessing variables:
@@ -120,7 +122,6 @@ max_dists_array = []
 
 # Layered Motion Planning: RRT (global) + Potential Field (local)
 if __name__ == '__main__':
-    mode = 1
     # RRT-global planning
     plt.figure(figsize=(10, 10))
     draw_map(obstacles)
@@ -129,19 +130,54 @@ if __name__ == '__main__':
 
     obstacles_grid = grid_map(obstacles)
 
-    if mode == 0:
-        P_long = rrt_path(obstacles, xy_start, xy_goal, params)
-    elif mode == 1:
-        f = combined_potential(obstacles_grid, xy_goal, params.influence_radius)
-        [gy, gx] = np.gradient(-f)
-        draw_gradient(f)
-        P_long = rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy)
-    elif mode == 2:
-        att, rep = devided_potential(obstacles_grid, xy_goal, params.influence_radius)
-        [gy, gx] = np.gradient(-att - rep)
-        draw_gradient(att)
-        draw_gradient(rep)
-        P_long = rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy)
+    file_path = params.file_path
+    if params.mode == 0:
+        file_path += 'RRT.txt'
+    elif params.mode == 1:
+        file_path += 'APF.txt'
+    elif params.mode == 2:
+        file_path += 'SA.txt'
+
+    # two lists for storing time and number of iterations
+    tms = []
+    iters = []
+
+    for i in range(params.test_loops):
+        t, it = 0, 0
+        if params.mode == 0:
+            P_long, t, it = rrt_path(obstacles, xy_start, xy_goal, params)
+        elif params.mode == 1:
+            f = combined_potential(obstacles_grid, xy_goal, params.influence_radius)
+            [gy, gx] = np.gradient(-f)
+            draw_gradient(f)
+            P_long, t, it = rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy)
+        elif params.mode == 2:
+            att, rep = devided_potential(obstacles_grid, xy_goal, params.influence_radius)
+            g_att = np.gradient(-att)
+            g_rep = np.gradient(-rep)
+            draw_gradient(att)
+            draw_gradient(rep)
+            P_long, t, it = rrt_apf_sa_path(obstacles, xy_start, xy_goal, params, g_att, g_rep)
+        tms.append(t)
+        iters.append(it)
+
+    print('Average time: ', np.mean(tms))
+    print('Average iterations: ', np.mean(iters))
+    print('Average time per iteration: ', np.mean(tms) / np.mean(iters))
+    # 方差
+    print('Variance of time: ', np.var(tms))
+    print('Variance of iterations: ', np.var(iters))
+    print('Variance of time per iteration: ', np.var(tms) / np.mean(iters))
+
+    with open(file_path, mode='a', encoding='utf-8') as f:
+        f.write('Average time: ' + str(np.mean(tms)) + '\n')
+        f.write('Average iterations: ' + str(np.mean(iters)) + '\n')
+        f.write('Average time per iteration: ' + str(np.mean(tms) / np.mean(iters)) + '\n')
+        # 方差
+        f.write('Variance of time: ' + str(np.var(tms)) + '\n')
+        f.write('Variance of iterations: ' + str(np.var(iters)) + '\n')
+        f.write('Variance of time per iteration: ' + str(np.var(tms) / np.mean(iters)) + '\n')
+
 
     # plt.plot(P_long[:,0], P_long[:,1], linewidth=3, color='green', label='Global planner path')
     # plt.pause(1.0)
@@ -151,104 +187,3 @@ if __name__ == '__main__':
     P = np.vstack([P, xy_start])
     plt.plot(P[:, 0], P[:, 1], linewidth=3, color='orange', label='Global planner path')
     plt.pause(0.1)
-
-    # APF-robot
-    breakpoint()
-
-    sp_ind = 0
-    robot1.route = np.array([traj_global[0, :]])
-    robot1.sp = robot1.route[-1, :]
-
-    followers_sp = formation(params.num_robots, leader_des=robot1.sp, v=np.array([0, -1.0]), l=0.3)
-    for i in range(len(followers_sp)):
-        robots[i + 1].sp = followers_sp[i]
-        robots[i + 1].route = np.array([followers_sp[i]])
-
-    while True:  # loop through all the setpoint from global planner trajectory, traj_global
-        dist_to_goal = norm(robot1.sp - xy_goal)
-        if dist_to_goal < params.goal_tolerance:  # [m]
-            print('Goal is reached')
-            break
-        if params.moving_obstacles: obstacles = move_obstacles(obstacles,
-                                                               params)  # change poses of some obstacles on the map
-
-        # leader's setpoint from global planner
-        robot1.sp_global = traj_global[sp_ind, :]
-        # correct leader's pose with local planner
-        robot1.local_planner(obstacles, params)
-
-        """ adding following robots in the swarm """
-        # formation poses from global planner
-        followers_sp_global = formation(params.num_robots, robot1.sp_global, v=normalize(robot1.sp_global - robot1.sp),
-                                        l=0.3)
-        for i in range(len(followers_sp_global)):
-            robots[i + 1].sp_global = followers_sp_global[i]
-
-        for p in range(len(followers_sp)):  # formation poses correction with local planner
-            # robots repel from each other inside the formation
-            robots_obstacles_sp = [x for i, x in enumerate(followers_sp + [robot1.sp]) if
-                                   i != p]  # all poses except the robot[p]
-            robots_obstacles = poses2polygons(
-                robots_obstacles_sp)  # each drone is defined as a small cube for inter-robots collision avoidance
-            obstacles1 = np.array(
-                obstacles + robots_obstacles)  # combine exisiting obstacles on the map with other robots[for each i: i!=p] in formation
-            # follower robot's position correction with local planner
-            robots[p + 1].local_planner(obstacles1, params)
-            followers_sp[p] = robots[p + 1].sp
-
-        # centroid pose:
-        centroid = 0
-        for robot in robots:
-            centroid += robot.sp / len(robots)
-        # dists to robots from the centroid:
-        dists = []
-        for robot in robots:
-            dists.append(norm(centroid - robot.sp))
-        mean_dists_array.append(np.mean(dists))
-        max_dists_array.append(np.max(dists))
-
-        # vizualization
-        plt.cla()
-        plt.plot(centroid[0], centroid[1], '*', color='blue', markersize=7)
-        draw_map(obstacles)
-        if params.num_robots == 1:
-            draw_gradient(robots[0].f)
-        else:
-            draw_gradient(robots[1].f)
-        for robot in robots[1:]: plt.plot(robot.sp[0], robot.sp[1], '^', color='blue', markersize=10,
-                                          zorder=15)  # robots poses
-        plt.plot(robot1.sp[0], robot1.sp[1], '^', color='green', markersize=10, zorder=15)  # robots poses
-        plt.plot(robot1.route[:, 0], robot1.route[:, 1], linewidth=2, color='green',
-                 label="Robot's path, corrected with local planner", zorder=10)
-        # for robot in robots[1:]: plt.plot(robot.route[:,0], robot.route[:,1], '--', linewidth=2, color='green', zorder=10)
-        plt.plot(P[:, 0], P[:, 1], linewidth=3, color='orange', label='Global planner path')
-        for robot in robots[:1]: plt.plot(robot.sp_global[0], robot.sp_global[1], 'ro', color='green', markersize=7,
-                                          label='Global planner setpoint')
-        plt.plot(xy_start[0], xy_start[1], 'bo', color='red', markersize=20, label='start')
-        plt.plot(xy_goal[0], xy_goal[1], 'bo', color='green', markersize=20, label='goal')
-        plt.legend()
-        plt.draw()
-        plt.pause(0.01)
-
-        # update loop variable
-        if sp_ind < traj_global.shape[0] - 1 and norm(robot1.sp_global - robot1.sp) < params.max_sp_dist: sp_ind += 1
-
-print('Postprocessing...')
-plt.figure()
-plt.title('Robots velocities')
-plt.plot(robot1.vel_array, label='leader')
-for i in range(1, len(robots)): plt.plot(robots[i].vel_array, '--', label='follower %d' % i)
-plt.legend()
-plt.grid()
-
-plt.figure()
-plt.plot(mean_dists_array, label='mean swarm size')
-plt.plot(max_dists_array, label='max swarm size')
-plt.legend()
-plt.grid()
-
-# close windows if Enter-button is pressed
-plt.draw()
-plt.pause(0.1)
-input('Hit Enter to close')
-plt.close('all')

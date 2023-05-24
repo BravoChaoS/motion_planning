@@ -74,7 +74,8 @@ def normalize(v):
     return v / norm
 
 
-def rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy):
+
+def rrt_apf_sa_path(obstacles, xy_start, xy_goal, params, g_att, g_rep):
     # Initialize RRT. The RRT will be represented as a list of nodes.
     # So each column represents a vertex of the tree.
     rrt = []
@@ -87,86 +88,102 @@ def rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy):
     minDistGoal = params.minDistGoal  # Convergence criterion: success when the tree reaches within 0.25 in distance from the goal.
     d = params.extension  # Extension parameter: this controls how far the RRT extends in each step.
 
+    [att_y, att_x] = g_att
+    [rep_y, rep_x] = g_rep
+
     # RRT algorithm
     start_time = time.time()
     end_time = 0
     iters = 0
     print('Configuration space sampling started ...')
+
+    # simulated annealing
+    T_min = 0.1
+    alpha = 0.98
     while not nearGoal:  # and iters < maxiters:
-        # Sample point
-        rnd = random()
-        # With probability goal_prob, sample the goal. This promotes movement to the goal.
-        if rnd < params.goal_prob:
-            xy = xy_goal
-        else:
-            # Sample (uniformly) from space (with probability 0.95). The space is defined
-            # with the bounds world_bounds_x and world_bounds_y defined above.
-            # So, the x coordinate should be sampled in the interval
-            # world_bounds_x=2.5 and the y coordinate from world_bounds_y=2.5.
-            xy = np.array([random() * (params.world_bounds_x[1] - params.world_bounds_x[0]) + params.world_bounds_x[0],
-                           random() * (params.world_bounds_y[1] - params.world_bounds_y[0]) + params.world_bounds_y[0]])
-            # Should be a 2 x 1 vector
-        # Check if sample is collision free
-        collFree = isCollisionFreeVertex(obstacles, xy)
-        # If it's not collision free, continue with loop
-        if not collFree:
-            iters += 1
-            continue
-
-        # If it is collision free, find closest point in existing tree. 
-        closest_node = closestNode(rrt, xy)
-        prev_grid = meters2grid(closest_node.p)
-
-        # Extend tree towards xy from closest_vert. Use the extension parameter
-        # d defined above as your step size. In other words, the Euclidean
-        # distance between new_vert and closest_vert should be d.
-        new_node = Node()
-        norm_rand = normalize(xy - closest_node.p)
-        norm_f = normalize(np.array([gx[prev_grid[0]][prev_grid[1]], gy[prev_grid[0]][prev_grid[1]]]))
-        new_node.p = closest_node.p + d * normalize(norm_rand + params.apf_coef * norm_f)
-        # if out of range
-        if rnd < params.goal_prob or new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[
-            1] or new_node.p[1] < params.world_bounds_y[0] or new_node.p[1] > params.world_bounds_y[1]:
-            continue
-
-        new_node.i = len(rrt)
-        new_node.iPrev = closest_node.i
-
-        # Check if new vertice is in collision
-        collFree = isCollisionFreeEdge(obstacles, closest_node.p, new_node.p)
-        # If it's not collision free, continue with loop
-        if not collFree:
-            iters += 1
-            continue
-
-        if params.animate:
-            # plt.plot(xy[0], xy[1], 'ro', color='k')
-            plt.plot(new_node.p[0], new_node.p[1], 'bo', color='blue', markersize=5)  # VERTICES
-            plt.plot([closest_node.p[0], new_node.p[0]], [closest_node.p[1], new_node.p[1]], color='blue')  # EDGES
-            plt.draw()
-            # plt.pause(0.001)
-
-        # If it is collision free, add it to tree
-        rrt.append(new_node)
-
-        # Check if we have reached the goal
-        if norm(np.array(xy_goal) - np.array(new_node.p)) < minDistGoal:
-            # Add last, goal node
-            goal_node = Node()
-            goal_node.p = xy_goal
-            goal_node.i = len(rrt)
-            goal_node.iPrev = new_node.i
-            if isCollisionFreeEdge(obstacles, new_node.p, goal_node.p):
-                rrt.append(goal_node)
-                P = [goal_node.p]
+        T = 1000
+        while T > T_min and not nearGoal:
+            # Sample point
+            rnd = random()
+            # With probability goal_prob, sample the goal. This promotes movement to the goal.
+            if rnd < params.goal_prob:
+                xy = xy_goal
             else:
-                P = []
+                # Sample (uniformly) from space (with probability 0.95). The space is defined
+                # with the bounds world_bounds_x and world_bounds_y defined above.
+                # So, the x coordinate should be sampled in the interval
+                # world_bounds_x=2.5 and the y coordinate from world_bounds_y=2.5.
+                xy = np.array([random() * (params.world_bounds_x[1] - params.world_bounds_x[0]) + params.world_bounds_x[0],
+                               random() * (params.world_bounds_y[1] - params.world_bounds_y[0]) + params.world_bounds_y[0]])
+                # Should be a 2 x 1 vector
+            # Check if sample is collision free
+            collFree = isCollisionFreeVertex(obstacles, xy)
+            # If it's not collision free, continue with loop
+            if not collFree:
+                iters += 1
+                continue
 
-            end_time = time.time()
-            nearGoal = True
-            print('RRT is constructed after %.2f seconds:' % (end_time - start_time))
+            # If it is collision free, find closest point in existing tree.
+            closest_node = closestNode(rrt, xy)
+            prev_grid = meters2grid(closest_node.p)
+            # if prev_grid[0] < 0 or prev_grid[1] < 0 or prev_grid[0] >= gx.shape[0] or prev_grid[1] >= gx.shape[1]:
+            #     print('Error: closest node out of bounds at ' + str(prev_grid) + str(closest_node.p))
 
-        iters += 1
+            # pf_delt = d * params.apf_coef * np.array([gx[prev_grid[0]][prev_grid[1]], gy[prev_grid[0]][prev_grid[1]]])
+            f_att = np.array([att_x[prev_grid[0]][prev_grid[1]], att_y[prev_grid[0]][prev_grid[1]]])
+            f_rep = np.array([rep_x[prev_grid[0]][prev_grid[1]], rep_y[prev_grid[0]][prev_grid[1]]])
+
+            # Extend tree towards xy from closest_vert. Use the extension parameter
+            # d defined above as your step size. In other words, the Euclidean
+            # distance between new_vert and closest_vert should be d.
+            new_node = Node()
+            norm_rand = normalize(xy - closest_node.p)
+            norm_f = normalize(f_att + (T / 2000. + 0.1) * f_rep)
+
+            new_node.p = closest_node.p + (d) * normalize(norm_rand + params.apf_coef * norm_f)
+            # if out of range
+            if rnd < params.goal_prob or new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[
+                1] or new_node.p[1] < params.world_bounds_y[0] or new_node.p[1] > params.world_bounds_y[1]:
+                continue
+
+            new_node.i = len(rrt)
+            new_node.iPrev = closest_node.i
+
+            # Check if new vertice is in collision
+            collFree = isCollisionFreeEdge(obstacles, closest_node.p, new_node.p)
+            # If it's not collision free, continue with loop
+            if not collFree:
+                iters += 1
+                continue
+
+            if params.animate:
+                # plt.plot(xy[0], xy[1], 'ro', color='k')
+                plt.plot(new_node.p[0], new_node.p[1], 'bo', color='blue', markersize=5)  # VERTICES
+                plt.plot([closest_node.p[0], new_node.p[0]], [closest_node.p[1], new_node.p[1]], color='blue')  # EDGES
+                plt.draw()
+                # plt.pause(0.001)
+
+            # If it is collision free, add it to tree
+            rrt.append(new_node)
+
+            # Check if we have reached the goal
+            if norm(np.array(xy_goal) - np.array(new_node.p)) < minDistGoal:
+                # Add last, goal node
+                goal_node = Node()
+                goal_node.p = xy_goal
+                goal_node.i = len(rrt)
+                goal_node.iPrev = new_node.i
+                if isCollisionFreeEdge(obstacles, new_node.p, goal_node.p):
+                    rrt.append(goal_node)
+                    P = [goal_node.p]
+                else:
+                    P = []
+
+                end_time = time.time()
+                nearGoal = True
+                print('RRT is constructed after %.2f seconds:' % (end_time - start_time))
+            T = T * alpha
+            iters += 1
 
     # print 'Number of iterations passed: %d / %d' %(iters, params.maxiters)
     # print 'RRT length: ', len(rrt)
@@ -182,6 +199,7 @@ def rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy):
             break
     P = np.array(P)
     # plt.plot( P[:,0], P[:,1], color='green', linewidth=5, label='path from RRT' )
+
     print(iters, 'iterations passed')
     return P, (end_time - start_time), iters
 

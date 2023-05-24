@@ -61,7 +61,7 @@ def devided_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=
     repulsive[d2 > d0] = 0
     """ Attractive potential """
     [x, y] = np.meshgrid(np.arange(ncols), np.arange(nrows))
-    attractive = attractive_coef * ((x - goal[0]) ** 2 + (y - goal[1]) ** 2)
+    attractive = attractive_coef * ((x - goal[0]) ** 2 + (y - goal[1]) ** 2) + 2
     """ Combine terms """
     return attractive, repulsive
 
