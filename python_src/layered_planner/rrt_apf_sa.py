@@ -99,7 +99,7 @@ def rrt_apf_sa_path(obstacles, xy_start, xy_goal, params, g_att, g_rep):
 
     # simulated annealing
     T_min = 0.1
-    alpha = 0.98
+    alpha = 0.9
     while not nearGoal:  # and iters < maxiters:
         T = 1000
         while T > T_min and not nearGoal:
@@ -138,11 +138,12 @@ def rrt_apf_sa_path(obstacles, xy_start, xy_goal, params, g_att, g_rep):
             # distance between new_vert and closest_vert should be d.
             new_node = Node()
             norm_rand = normalize(xy - closest_node.p)
-            norm_f = normalize(f_att + (T / 2000. + 0.1) * f_rep)
-
-            new_node.p = closest_node.p + (d) * normalize(norm_rand + params.apf_coef * norm_f)
+            norm_f = normalize(f_att + (T / 1000. + 0.2) * f_rep)
+            if rnd < params.goal_prob:
+                norm_f *= 0
+            new_node.p = closest_node.p + (d) * normalize(norm_rand + (1 - T / 2000. - params.apf_coef) * norm_f)
             # if out of range
-            if rnd < params.goal_prob or new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[
+            if new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[
                 1] or new_node.p[1] < params.world_bounds_y[0] or new_node.p[1] > params.world_bounds_y[1]:
                 continue
 

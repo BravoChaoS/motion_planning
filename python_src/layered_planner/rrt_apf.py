@@ -123,9 +123,11 @@ def rrt_apf_path(obstacles, xy_start, xy_goal, params, gx, gy):
         new_node = Node()
         norm_rand = normalize(xy - closest_node.p)
         norm_f = normalize(np.array([gx[prev_grid[0]][prev_grid[1]], gy[prev_grid[0]][prev_grid[1]]]))
+        if rnd < params.goal_prob:
+            norm_f *= 0
         new_node.p = closest_node.p + d * normalize(norm_rand + params.apf_coef * norm_f)
         # if out of range
-        if rnd < params.goal_prob or new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[
+        if new_node.p[0] < params.world_bounds_x[0] or new_node.p[0] > params.world_bounds_x[
             1] or new_node.p[1] < params.world_bounds_y[0] or new_node.p[1] > params.world_bounds_y[1]:
             continue
 

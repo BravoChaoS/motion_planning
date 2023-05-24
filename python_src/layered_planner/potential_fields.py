@@ -50,7 +50,7 @@ def grid2meters(pose_grid, nrows=500, ncols=500):
     return pose_meters
 
 
-def devided_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=300,
+def devided_potential(obstacles_grid, goal, influence_radius=5, attractive_coef=1. / 700, repulsive_coef=500,
                       nrows=500, ncols=500):
     """ Repulsive potential """
     goal = meters2grid(goal)
@@ -66,7 +66,7 @@ def devided_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=
     return attractive, repulsive
 
 
-def combined_potential(obstacles_grid, goal, influence_radius=2, attractive_coef=1. / 700, repulsive_coef=300,
+def combined_potential(obstacles_grid, goal, influence_radius=100, attractive_coef=1. / 700, repulsive_coef=300,
                        nrows=500, ncols=500):
     attractive, repulsive = devided_potential(obstacles_grid, goal, influence_radius, attractive_coef, repulsive_coef,
                                               nrows, ncols)
