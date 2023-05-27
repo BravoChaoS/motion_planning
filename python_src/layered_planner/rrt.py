@@ -91,7 +91,8 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
     end_time = 0
     iters = 0
     print('Configuration space sampling started ...')
-    while not nearGoal:  # and iters < maxiters:
+    P = []
+    while not nearGoal and iters < params.maxiters:  # and iters < maxiters:
         # Sample point
         rnd = random()
         # With probability goal_prob, sample the goal. This promotes movement to the goal.
@@ -109,7 +110,6 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
         collFree = isCollisionFreeVertex(obstacles, xy)
         # If it's not collision free, continue with loop
         if not collFree:
-            iters += 1
             continue
 
         # If it is collision free, find closest point in existing tree. 
@@ -127,7 +127,6 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
         collFree = isCollisionFreeEdge(obstacles, closest_node.p, new_node.p)
         # If it's not collision free, continue with loop
         if not collFree:
-            iters += 1
             continue
 
         if params.animate:
@@ -175,7 +174,7 @@ def rrt_path(obstacles, xy_start, xy_goal, params):
     # plt.plot( P[:,0], P[:,1], color='green', linewidth=5, label='path from RRT' )
 
     print(iters, 'iterations passed')
-    return P, (end_time - start_time), iters
+    return P, (end_time - start_time), iters, nearGoal
 
 
 def ShortenPath(P, obstacles, smoothiters=10):
